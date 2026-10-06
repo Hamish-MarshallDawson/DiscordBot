@@ -1,17 +1,76 @@
 const path = require('node:path');
 const fs = require('node:fs');
-const Database = require('better-sqlite3');
+const initSqlJs = require('sql.js');
 
 const dataDir = path.join(__dirname, 'data');
-fs.mkdirSync(dataDir, { recursive: true });
+const dbPath = path.join(dataDir, 'bot.db');
 
-const db = new Database(path.join(dataDir, 'bot.db'));
+let db = null;
 
-// Enable WAL mode for better concurrent performance
-db.pragma('journal_mode = WAL');
+/**
+ * Wrapper around sql.js that mimics the better-sqlite3 API.
+ * This lets all command files use db.prepare(sql).get/run/all()
+ * exactly like better-sqlite3, but with zero native compilation.
+ */
+function createWrapper(rawDb) {
+  function save() {
+    const data = rawDb.export();
+    fs.writeFileSync(dbPath, Buffer.from(data));
+  }
 
-function initDatabase() {
-  db.exec(`
+  return {
+    prepare(sql) {
+      return {
+        run(...params) {
+          rawDb.run(sql, params);
+          save();
+          return { changes: rawDb.getRowsModified() };
+        },
+        get(...params) {
+          const stmt = rawDb.prepare(sql);
+          if (params.length > 0) stmt.bind(params);
+          let result = null;
+          if (stmt.step()) {
+            result = stmt.getAsObject();
+          }
+          stmt.free();
+          return result;
+        },
+        all(...params) {
+          const results = [];
+          const stmt = rawDb.prepare(sql);
+          if (params.length > 0) stmt.bind(params);
+          while (stmt.step()) {
+            results.push(stmt.getAsObject());
+          }
+          stmt.free();
+          return results;
+        },
+      };
+    },
+    exec(sql) {
+      rawDb.exec(sql);
+      save();
+    },
+  };
+}
+
+async function initDatabase() {
+  fs.mkdirSync(dataDir, { recursive: true });
+
+  const SQL = await initSqlJs();
+
+  // Load existing database file if it exists
+  let rawDb;
+  try {
+    const fileBuffer = fs.readFileSync(dbPath);
+    rawDb = new SQL.Database(fileBuffer);
+  } catch {
+    rawDb = new SQL.Database();
+  }
+
+  // Enable WAL mode equivalent (not applicable in sql.js, but harmless)
+  rawDb.exec(`
     CREATE TABLE IF NOT EXISTS steam_links (
       discord_id TEXT PRIMARY KEY,
       steam_id TEXT NOT NULL,
@@ -45,8 +104,15 @@ function initDatabase() {
     );
   `);
 
+  db = createWrapper(rawDb);
+
   // Clean up expired roasts on startup
   db.prepare('DELETE FROM active_roasts WHERE expires_at < unixepoch()').run();
 }
 
-module.exports = { db, initDatabase };
+function getDb() {
+  if (!db) throw new Error('Database not initialized — call initDatabase() first');
+  return db;
+}
+
+module.exports = { initDatabase, getDb };

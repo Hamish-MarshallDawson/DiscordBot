@@ -1,14 +1,7 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
-const { db } = require('../../database');
+const { getDb } = require('../../database');
 const { successEmbed, errorEmbed } = require('../../utils/embeds');
 const { sendModLog } = require('../../utils/modlog');
-
-const deleteWarnings = db.prepare(
-  'DELETE FROM warnings WHERE user_id = ? AND guild_id = ?'
-);
-const countWarnings = db.prepare(
-  'SELECT COUNT(*) as count FROM warnings WHERE user_id = ? AND guild_id = ?'
-);
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -30,7 +23,12 @@ module.exports = {
     }
 
     const targetUser = interaction.options.getUser('user');
-    const { count } = countWarnings.get(targetUser.id, interaction.guild.id);
+    const db = getDb();
+
+    const countRow = db.prepare(
+      'SELECT COUNT(*) as count FROM warnings WHERE user_id = ? AND guild_id = ?'
+    ).get(targetUser.id, interaction.guild.id);
+    const count = countRow.count;
 
     if (count === 0) {
       return interaction.reply({
@@ -39,7 +37,7 @@ module.exports = {
       });
     }
 
-    deleteWarnings.run(targetUser.id, interaction.guild.id);
+    db.prepare('DELETE FROM warnings WHERE user_id = ? AND guild_id = ?').run(targetUser.id, interaction.guild.id);
 
     await interaction.reply({
       embeds: [successEmbed('Warnings Cleared', `Cleared **${count}** warning${count === 1 ? '' : 's'} for **${targetUser.tag}**.`)],

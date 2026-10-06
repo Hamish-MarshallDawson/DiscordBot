@@ -1,5 +1,5 @@
 const { SlashCommandBuilder } = require('discord.js');
-const { db } = require('../../database');
+const { getDb } = require('../../database');
 const { infoEmbed } = require('../../utils/embeds');
 
 module.exports = {
@@ -10,6 +10,7 @@ module.exports = {
     const now = Math.floor(Date.now() / 1000);
 
     // Clean up expired roasts first
+    const db = getDb();
     db.prepare('DELETE FROM active_roasts WHERE expires_at < ?').run(now);
 
     const roasts = db.prepare(

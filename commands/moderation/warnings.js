@@ -1,10 +1,6 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
-const { db } = require('../../database');
-const { infoEmbed } = require('../../utils/embeds');
-
-const getWarnings = db.prepare(
-  'SELECT id, moderator_id, reason, created_at FROM warnings WHERE user_id = ? AND guild_id = ? ORDER BY created_at DESC'
-);
+const { getDb } = require('../../database');
+const { infoEmbed, errorEmbed } = require('../../utils/embeds');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -19,7 +15,6 @@ module.exports = {
   cooldown: 3,
   async execute(interaction) {
     if (!interaction.memberPermissions.has(PermissionFlagsBits.ModerateMembers)) {
-      const { errorEmbed } = require('../../utils/embeds');
       return interaction.reply({
         embeds: [errorEmbed('Missing Permissions', 'You need the **Moderate Members** permission to use this command.')],
         ephemeral: true,
@@ -27,7 +22,10 @@ module.exports = {
     }
 
     const targetUser = interaction.options.getUser('user');
-    const warnings = getWarnings.all(targetUser.id, interaction.guild.id);
+    const db = getDb();
+    const warnings = db.prepare(
+      'SELECT id, moderator_id, reason, created_at FROM warnings WHERE user_id = ? AND guild_id = ? ORDER BY created_at DESC'
+    ).all(targetUser.id, interaction.guild.id);
 
     if (warnings.length === 0) {
       return interaction.reply({

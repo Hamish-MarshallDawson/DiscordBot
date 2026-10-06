@@ -1,14 +1,7 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
-const { db } = require('../../database');
+const { getDb } = require('../../database');
 const { successEmbed, errorEmbed } = require('../../utils/embeds');
 const { sendModLog } = require('../../utils/modlog');
-
-const insertWarning = db.prepare(
-  'INSERT INTO warnings (user_id, guild_id, moderator_id, reason) VALUES (?, ?, ?, ?)'
-);
-const countWarnings = db.prepare(
-  'SELECT COUNT(*) as count FROM warnings WHERE user_id = ? AND guild_id = ?'
-);
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -37,8 +30,15 @@ module.exports = {
     const targetUser = interaction.options.getUser('user');
     const reason = interaction.options.getString('reason');
 
-    insertWarning.run(targetUser.id, interaction.guild.id, interaction.user.id, reason);
-    const { count } = countWarnings.get(targetUser.id, interaction.guild.id);
+    const db = getDb();
+    db.prepare(
+      'INSERT INTO warnings (user_id, guild_id, moderator_id, reason) VALUES (?, ?, ?, ?)'
+    ).run(targetUser.id, interaction.guild.id, interaction.user.id, reason);
+
+    const countRow = db.prepare(
+      'SELECT COUNT(*) as count FROM warnings WHERE user_id = ? AND guild_id = ?'
+    ).get(targetUser.id, interaction.guild.id);
+    const count = countRow.count;
 
     try {
       await targetUser.send(`You have been warned in **${interaction.guild.name}**.\n**Reason:** ${reason}\n\nYou now have **${count}** warning${count === 1 ? '' : 's'}.`);

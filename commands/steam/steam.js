@@ -1,5 +1,5 @@
 const { SlashCommandBuilder } = require('discord.js');
-const { db } = require('../../database');
+const { getDb } = require('../../database');
 const { successEmbed, errorEmbed, infoEmbed } = require('../../utils/embeds');
 const { getPlayerSummary, getOwnedGames } = require('../../utils/steam-api');
 
@@ -64,6 +64,7 @@ module.exports = {
 };
 
 async function handleLink(interaction) {
+  const db = getDb();
   const steamId = interaction.options.getString('steamid');
 
   await interaction.deferReply();
@@ -91,6 +92,7 @@ async function handleLink(interaction) {
 }
 
 async function handleStats(interaction) {
+  const db = getDb();
   const targetUser = interaction.options.getUser('user') || interaction.user;
   const gameFilter = interaction.options.getString('game');
 
@@ -155,6 +157,7 @@ async function handleStats(interaction) {
 }
 
 async function handleCompare(interaction) {
+  const db = getDb();
   const user1 = interaction.options.getUser('user1');
   const user2 = interaction.options.getUser('user2');
 

@@ -1,5 +1,5 @@
 const { Events } = require('discord.js');
-const { db } = require('../database');
+const { getDb } = require('../database');
 const transformers = require('../utils/transformers');
 
 module.exports = {
@@ -9,6 +9,7 @@ module.exports = {
     if (!message.guild) return;
 
     // Check for active roast
+    const db = getDb();
     const roast = db.prepare(
       'SELECT id, style, expires_at FROM active_roasts WHERE target_id = ? AND channel_id = ?'
     ).get(message.author.id, message.channel.id);

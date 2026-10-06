@@ -47,6 +47,9 @@ for (const file of eventFiles) {
   }
 }
 
-// Init database and login
-initDatabase();
-client.login(process.env.DISCORD_TOKEN);
+// Init database (async — sql.js loads WASM) then login
+(async () => {
+  await initDatabase();
+  console.log('Database initialized.');
+  client.login(process.env.DISCORD_TOKEN);
+})();

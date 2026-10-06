@@ -1,5 +1,5 @@
 const { SlashCommandBuilder } = require('discord.js');
-const { db } = require('../../database');
+const { getDb } = require('../../database');
 const { successEmbed, errorEmbed } = require('../../utils/embeds');
 const { getStyles } = require('../../utils/transformers');
 
@@ -44,6 +44,7 @@ module.exports = {
 
     const expiresAt = Math.floor(Date.now() / 1000) + duration * 60;
 
+    const db = getDb();
     db.prepare(`
       INSERT OR REPLACE INTO active_roasts (target_id, channel_id, guild_id, style, started_by, expires_at)
       VALUES (?, ?, ?, ?, ?, ?)

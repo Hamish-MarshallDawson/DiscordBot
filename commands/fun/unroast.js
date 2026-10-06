@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
-const { db } = require('../../database');
+const { getDb } = require('../../database');
 const { successEmbed, errorEmbed } = require('../../utils/embeds');
 
 module.exports = {
@@ -15,6 +15,7 @@ module.exports = {
   async execute(interaction) {
     const target = interaction.options.getUser('target');
 
+    const db = getDb();
     const roast = db.prepare(
       'SELECT id, started_by FROM active_roasts WHERE target_id = ? AND channel_id = ?'
     ).get(target.id, interaction.channel.id);
